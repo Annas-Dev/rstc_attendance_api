@@ -98,31 +98,36 @@ def checknip():
             mydb = db_connection.create_connection_pegawai()
             connection_pegawai = mydb.cursor()
             try:
-                check_sql = "SELECT NIP, KODE_ABSEN FROM kode_absensi WHERE NIP = %s"
+                check_sql = "SELECT NIP, KODE_ABSEN, STATUS FROM kode_absensi WHERE NIP = %s"
                 connection_pegawai.execute(check_sql, (nip,))
                 existing_nip = connection_pegawai.fetchone()
                 if (existing_nip):
                     nip_value = existing_nip[0]
                     kode_absen_value = existing_nip[1]
-                    try:
-                        check_sql = "SELECT IMG_BASE64 FROM img_presensi WHERE NIP = %s"
-                        connection_pegawai.execute(check_sql, (nip,))
-                        img_presensi_data = connection_pegawai.fetchone()
-                        if (img_presensi_data):
-                            return jsonify({"success": "true", "message": "nip terdaftar", "gambar_from_database": img_presensi_data[0], "kode_absen": kode_absen_value, "status": "3"}), 200
-                        else:
-                            return jsonify({"success": "false", "message": "pegawai belum melakukan pendaftaran wajah", "kode_absen": kode_absen_value, "status": "2"}), 200
-                    except Exception as e:
-                        return jsonify({"success": "false", "message": "pengecekan database gambar gagal", "status": "0"}), 500
-                    finally:
-                        db_connection.close_connection(mydb)
+                    status = existing_nip[2]
+                    if (status == 1):
+                        try:
+                            check_sql = "SELECT IMG_BASE64 FROM img_presensi WHERE NIP = %s"
+                            connection_pegawai.execute(check_sql, (nip,))
+                            img_presensi_data = connection_pegawai.fetchone()
+                            if (img_presensi_data):
+                                return jsonify({"success": "true", "message": "nip terdaftar", "gambar_from_database": img_presensi_data[0], "kode_absen": kode_absen_value, "status": "3"}), 200
+                            else:
+                                return jsonify({"success": "false", "message": "pegawai belum melakukan pendaftaran wajah", "kode_absen": kode_absen_value, "status": "2"}), 200
+                        except Exception as e:
+                            return jsonify({"success": "false", "message": "pengecekan database gambar gagal", "status": "0"}), 500
+                        finally:
+                            db_connection.close_connection(mydb)
+                    else:
+                        return jsonify({"success": "false", "message": "mohon untuk mengaktifkan kode absen terlebih dahulu", "status": "4"}), 200
                 else:
-                    insert_sql = "INSERT INTO kode_absensi (NIP, KODE_ABSEN) VALUES (%s, %s)"
-                    kode_absen_sementara = uuid.uuid4().hex[:8]
-                    insert_val = (nip, kode_absen_sementara)
-                    connection_pegawai.execute(insert_sql, insert_val)
-                    mydb.commit()
-                    return jsonify({"success": "false", "message": "pegawai belum melakukan pendaftaran wajah", "kode_absen": kode_absen_sementara, "status": "2"}), 200
+                    return jsonify({"success": "false", "message": "anda tidak memiliki kode absen", "status": "2"}), 200
+                    # insert_sql = "INSERT INTO kode_absensi (NIP, KODE_ABSEN) VALUES (%s, %s)"
+                    # kode_absen_sementara = uuid.uuid4().hex[:8]
+                    # insert_val = (nip, kode_absen_sementara)
+                    # connection_pegawai.execute(insert_sql, insert_val)
+                    # mydb.commit()
+                    # return jsonify({"success": "false", "message": "pegawai belum melakukan pendaftaran wajah", "kode_absen": kode_absen_sementara, "status": "2"}), 200
             except Exception as e:
                 return jsonify({"success": "false", "message": "pengecekan kode absen gagal", "status": "0"}), 500
             finally:
